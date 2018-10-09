@@ -1,42 +1,66 @@
-var Game = {
-	shipWidth:				60,
-	shipHeight:				60,
-	shipYOffset:			10,
-	shipColor:				"#777777",
-	shipVelocity:			8,
-	nebuloidWidth:			30,
-	nebuloidHeight:		30,
-	nebuloidVelocity:		1,
-	nebuloidRows:			5,
-	nebuloidColumns:		10,
-	cybernatorWidth:		90,
-	cybernatorHeight:		30,
-	cybernatorVelocity:	3,
-	cybernatorColor:		"#AAFFAA",
-	cybernatorYOffset:	5,
-	gridX:					30,
-	gridY:					30,
-	rowSpace:				10,
-	columnSpace:			30,
-	laserWidth:				2,
-	laserHeight:			20,
-	laserVelocity:			15,
-	laserColor:				"#FF0000",
-	playingGame:			true,
-	ticksPerSecond:		25,
-	skipTicks: 				1000 / this.ticksPerSecond,
-	maxFrameSkip:			5,
-	nextGameTick:			0,
-	nebuloidScore:			1,
-	cybernatorScore:		5,
-	score:					0,
-	starCount:				75,
-	minimumStarSize:		1,
-	maximumStarSize:		8,
-	minimumStarVelocity:	2,
-	maximumStarVelocity:	10,
-	parallaxLayers:		8
-};
+/* Ship variables */
+shipWidth = 60;
+shipHeight = 60;
+shipYOffset = 10;
+shipColor = "#777777";
+shipVelocity = 8;
+
+/* Nebuloid variables */
+nebuloidWidth = 30;
+nebuloidHeight = 30;
+nebuloidVelocity = 1;
+nebuloidRows = 5;
+nebuloidColumns = 10;
+nebuloidShotFrequency = 0.001;
+nebuloidLaserVelocity = 6;
+
+/* Cybernator variables */
+cybernatorWidth = 90;
+cybernatorHeight = 30;
+cybernatorVelocity = 3;
+cybernatorColor = "#AAFFAA";
+cybernatorYOffset = 5;
+
+/* Shield variables */
+shieldNumber = 9;
+shieldWidth = 60;
+shieldHeight = 60;
+shieldHealth = 3;
+shieldColor = "#00FFFF";
+shieldGap = 40;
+shieldYOffset = 100;
+
+/* Grid spacing variables */
+gridX = 30;
+gridY = 30;
+rowSpace = 10;
+columnSpace = 30;
+
+/* Laser variables */
+laserWidth = 4;
+laserHeight = 20;
+laserVelocity = 15;
+laserColor = "#FF0000";
+
+/* Gameplay variables */
+playingGame = true;
+nebuloidScore = 1;
+cybernatorScore = 5;
+score = 0;
+starCount = 75;
+minimumStarSize = 1;
+maximumStarSize = 5;
+minimumStarVelocity = 2;
+maximumStarVelocity = 10;
+parallaxLayers = 5;
+
+/* Performance variables */
+framesPerSecond = 60;
+framesThisSecond = 0;
+timeStep = 1000 / framesPerSecond;
+lastUpdate = 0;
+lastFrameTime = 0;
+deltaTime = 0;
 
 var Keyboard = {
    RIGHT:	39,
@@ -77,9 +101,12 @@ var ship;
 var cybernator;
 var lasers = [];
 var nebuloids = [];
+var nebuloidLasers = [];
+var shields = [];
 var stars = [];
 var date;
 var index;
+var subIndex;
 var row;
 var column;
 
@@ -121,24 +148,28 @@ function main() {
 
 function resetGame() {
 	
-	Game.playingGame = true;
-	Game.score = 0;
+	playingGame = true;
+	score = 0;
 	
 	scoreLabel.innerHTML = "" + Game.score;
 	
-	Game.nextGameTick = date.getTime();
+	nextGameTick = date.getTime();
 	
-	ship.x = (screen.width - Game.shipWidth) / 2;
-	ship.y = screen.height - Game.shipHeight;
+	ship.x = (screen.width - shipWidth) / 2;
+	ship.y = screen.height - shipHeight - shipYOffset;
 	
-	for(row = 0; row < Game.nebuloidRows; row++) {
-		for(column = 0; column < Game.nebuloidColumns; column++) {
+	for(row = 0; row < nebuloidRows; row++) {
+		for(column = 0; column < nebuloidColumns; column++) {
 			nebuloids[row][column].alive = true;
-			nebuloids[row][column].x = Game.gridX + (Game.nebuloidWidth + Game.columnSpace) * column;
-			nebuloids[row][column].y = Game.gridY + (Game.nebuloidHeight + Game.rowSpace) * row;
+			nebuloids[row][column].x = gridX + (nebuloidWidth + columnSpace) * column;
+			nebuloids[row][column].y = gridY + (nebuloidHeight + rowSpace) * row;
 			nebuloids[row][column].color = randomColor();
 			nebuloids[row][column].direction = Direction.RIGHT;
 		}
+	}
+	
+	for(index = 0; index < shields.length; index++) {
+		shields[index].health = shieldHealth;
 	}
 }
 
@@ -153,43 +184,43 @@ function setup() {
 	
 	// Get the score label
 	scoreLabel = document.getElementById("scoreLabel");
-	scoreLabel.innerHTML = "" + Game.score;
+	scoreLabel.innerHTML = "" + score;
 	
 	// Initialize the global time object
 	date = new Date();
-	Game.nextGameTick = date.getTime();
+	nextGameTick = date.getTime();
 	
 	// Initialize the screen and draw
 	screen = new Screen(0, 0, canvas.width, canvas.height, "#000000");
 	
 	// Ship should start at the bottom, and centered horizontally
 	ship = new Ship(
-		(screen.width - Game.shipWidth) / 2, 
-		screen.height - Game.shipHeight - Game.shipYOffset,
-		Game.shipVelocity,
-		Game.shipWidth,
-		Game.shipHeight,
-		Game.shipColor,
+		(screen.width - shipWidth) / 2, 
+		screen.height - shipHeight - shipYOffset,
+		shipVelocity,
+		shipWidth,
+		shipHeight,
+		shipColor,
 		sprites[0]
 	);
 	
 	// The cybernator
 	cybernator = new Nebuloid(
-		-Game.cybernatorWidth,
-		Game.cybernatorYOffset,
-		Game.cybernatorVelocity,
-		Game.cybernatorWidth,
-		Game.cybernatorHeight,
-		Game.cybernatorColor,
+		-cybernatorWidth,
+		cybernatorYOffset,
+		cybernatorVelocity,
+		cybernatorWidth,
+		cybernatorHeight,
+		cybernatorColor,
 		sprites[6],
 		false,
 		1
 	);
 	
-	// 5 rows of nebuloids, eacdh a different type
+	// 5 rows of nebuloids, each a different type
 	// Row 0 -> virus, Row 1 -> red, Row 2 -> yellow, Row 3 -> green, 
 	// Row 4 -> blue
-	for(row = 0; row < Game.nebuloidRows; row++) {
+	for(row = 0; row < nebuloidRows; row++) {
 		nebuloids[row] = [];
 		var rowColor = null;
 		if(row == 0) {
@@ -203,26 +234,41 @@ function setup() {
 		} else {
 			rowColor = Color.BLUE;
 		}
-		for(column = 0; column < Game.nebuloidColumns; column++) {
+		for(column = 0; column < nebuloidColumns; column++) {
 			nebuloids[row].push(new Nebuloid(
-				Game.gridX + (Game.nebuloidWidth + Game.columnSpace) * column,
-				Game.gridY + (Game.nebuloidHeight + Game.rowSpace) * row,
-				Game.nebuloidVelocity,
-				Game.nebuloidWidth,
-				Game.nebuloidHeight,
+				gridX + (nebuloidWidth + columnSpace) * column,
+				gridY + (nebuloidHeight + rowSpace) * row,
+				nebuloidVelocity,
+				nebuloidWidth,
+				nebuloidHeight,
 				rowColor,
 				sprites[row + enemyOffset]
 			));
 		}
 	}
 	
+	// Shields should be centered horizontally
+	var shieldScreenWidth = shieldNumber * shieldWidth + (shieldNumber - 1) * shieldGap;
+	var shieldXOffset = (screen.width - shieldScreenWidth) / 2;
+	for(index = 0; index < shieldNumber; index++) {
+		shields[index] = new Shield(
+			shieldXOffset + index * (shieldGap + shieldWidth),
+			screen.height - shieldHeight - shieldYOffset,
+			shieldWidth,
+			shieldHeight,
+			shieldHealth,
+			shieldColor,
+			sprites[7]
+		);
+	}
+	
 	// Make sure when setting up, we are playing the game and the score is reset
-	Game.playingGame = true;
-	Game.score = 0;
+	playingGame = true;
+	score = 0;
 	
 	// Initialize the stars array
-	for(index = 0; index < Game.starCount; index++) {
-		var z = getParallaxLayer(Game.parallaxLayers);
+	for(index = 0; index < starCount; index++) {
+		var z = getParallaxLayer(parallaxLayers);
 		var size = getParallaxSize(z);
 		var velocity = getParallaxVelocity(z);
 		stars[index] = new Particle(
@@ -240,37 +286,43 @@ function setup() {
 
 function playGame(timeStamp) {
 	
-	// Helper variables
-	var numberOfLoops = 0;
-	var interpolation = 0.0;
-	var skipTicks = 1000 / Game.ticksPerSecond;
-	var yetToSkip = numberOfLoops < Game.maxFrameSkip;
-	var fastUpdate = date.getTime() > Game.nextGameTick;
+	if(timeStamp < lastUpdate + (1000 / framesPerSecond)) {
+		requestAnimationFrame(playGame);
+		return;
+	}
+	deltaTime += timeStamp - lastUpdate;
+	lastUpdate = timeStamp;
 	
-	if(Game.playingGame && preloaded) {
-		while(fastUpdate && yetToSkip) {
-			update(date.getTime() - Game.nextGameTick);
-			numberOfLoops++;
-			Game.currentTime += skipTicks;
+	if(timeStamp > lastUpdate + 1000) {
+		framesPerSecond = 0.25 * framesThisSecond + (1 - 0.25) * framesPerSecond;
+		lastUpdate = timeStamp;
+		framesThisSecond = 0;
+	}
+	framesThisSecond++;
+	
+	var updateSteps = 0;
+	while(deltaTime >= timeStep) {
+		update(timeStep / 1000);
+		deltaTime -= timeStep;
+		if(++updateSteps >= 100) {
+			deltaTime = 0;
+			break;
 		}
-		
-		interpolation = 1.0 + (date.getTime() - Game.nextGameTick) / skipTicks;
-		render(interpolation);
 	}
 	
-   // Start the animation process
+	render((deltaTime / timeStep) / 1000);
    requestAnimationFrame(playGame);
-	
 }
 
 function makeLaser() {
 	lasers.push(new Laser(
-		ship.x + (ship.width - Game.laserWidth) / 2,
+		ship.x + (ship.width - laserWidth) / 2,
 		ship.y,
-		Game.laserVelocity,
-		Game.laserWidth,
-		Game.laserHeight,
-		Game.laserColor
+		laserVelocity,
+		laserWidth,
+		laserHeight,
+		laserColor,
+		-1
 	));
 }
 
@@ -303,7 +355,7 @@ function update(deltaTime) {
 		cybernator.update(deltaTime);
 	}
 	
-	for(index = 0; index < Game.starCount; index++) {
+	for(index = 0; index < starCount; index++) {
 		stars[index].update(deltaTime);
 		if(stars[index].y > screen.height) {
 			stars[index].y = -stars[index].height;
@@ -311,11 +363,11 @@ function update(deltaTime) {
 		}
 	}
 	
-	for(row = 0; row < Game.nebuloidRows; row++) {
-		for(column = 0; column < Game.nebuloidColumns; column++) {
+	for(row = 0; row < nebuloidRows; row++) {
+		for(column = 0; column < nebuloidColumns; column++) {
 			if(!shiftedDown) {
 				var leftBoundaryHit = (nebuloids[row][column].x < 0) && nebuloids[row][column].alive;
-				var rightBoundaryHit = (nebuloids[row][column].x + Game.nebuloidWidth > screen.width) && nebuloids[row][column].alive;
+				var rightBoundaryHit = (nebuloids[row][column].x + nebuloidWidth > screen.width) && nebuloids[row][column].alive;
 				if(leftBoundaryHit || rightBoundaryHit) {
 					shiftNebuloidsDown();
 					shiftedDown = true;
@@ -324,15 +376,32 @@ function update(deltaTime) {
 		}
 	}
 	
-	for(row = 0; row < Game.nebuloidRows; row++) {
-		for(column = 0; column < Game.nebuloidColumns; column++) {
+	for(row = 0; row < nebuloidRows; row++) {
+		for(column = 0; column < nebuloidColumns; column++) {
 			nebuloids[row][column].update(deltaTime);
+			if(nebuloids[row][column].alive) {
+				if(Math.random() < nebuloidShotFrequency) {
+					nebuloidLasers.push(new Laser(
+						nebuloids[row][column].x + (nebuloids[row][column].width - laserWidth) / 2,
+						nebuloids[row][column].y,
+						nebuloidLaserVelocity,
+						laserWidth,
+						laserHeight,
+						nebuloids[row][column].color,
+						1
+					));
+				}
+			}
 		}
 	}
 	
 	for(index = 0; index < lasers.length; index++) {
 		lasers[index].move(deltaTime);
-		lasers[index].color = randomColor();
+		lasers[index].color = cycleColor(lasers[index].color);
+	}
+	
+	for(index = 0; index < nebuloidLasers.length; index++) {
+		nebuloidLasers[index].move(deltaTime);
 	}
 	
 	ship.setDirection(Pressed.LEFT, Pressed.RIGHT);
@@ -340,7 +409,8 @@ function update(deltaTime) {
 	
 	shot();
 	cybernatorShot();
-	detectPlayerHit()
+	detectShieldHit();
+	detectPlayerHit();
 	
 	deleteLasers();
 	
@@ -348,18 +418,26 @@ function update(deltaTime) {
 
 function render(interpolation) {
 	
-	update(interpolation);
-	
 	screen.draw(graphics);
 	
-	for(index = 0; index < Game.starCount; index++) {
+	for(index = 0; index < starCount; index++) {
 		stars[index].draw(graphics);
 	}
 	
 	cybernator.draw(graphics);
 	
-	for(row = 0; row < Game.nebuloidRows; row++) {
-		for(column = 0; column < Game.nebuloidColumns; column++) {
+	for(index = 0; index < shields.length; index++) {
+		if(shields[index].health > 0) {
+			shields[index].draw(graphics);
+		}
+	}
+	
+	for(index = 0; index < nebuloidLasers.length; index++) {
+		nebuloidLasers[index].draw(graphics);
+	}
+	
+	for(row = 0; row < nebuloidRows; row++) {
+		for(column = 0; column < nebuloidColumns; column++) {
 			nebuloids[row][column].draw(graphics);
 		}
 	}
@@ -411,18 +489,25 @@ function cycleColor(currentColor) {
 
 function deleteLasers() {
 	for(index = lasers.length - 1; index >= 0; index--) {
-		var aboveScreen = lasers[index].y + Game.laserHeight < 0;
+		var aboveScreen = lasers[index].y + laserHeight < 0;
 		var belowScreen = lasers[index].y > screen.height;
 		if(aboveScreen || belowScreen) {
 			lasers.splice(index, 1);
+		}
+	}
+	for(index = nebuloidLasers.length - 1; index >= 0; index--) {
+		var aboveScreen = nebuloidLasers[index].y + laserHeight < 0;
+		var belowScreen = nebuloidLasers[index].y > screen.height;
+		if(aboveScreen || belowScreen) {
+			nebuloidLasers.splice(index, 1);
 		}
 	}
 }
 
 function shot() {
 	if(lasers.length > 0) {
-		for(row = 0; row < Game.nebuloidRows; row++) {
-			for(column = 0; column < Game.nebuloidColumns; column++) {
+		for(row = 0; row < nebuloidRows; row++) {
+			for(column = 0; column < nebuloidColumns; column++) {
 				if(nebuloids[row][column].alive) {
 					for(index = 0; index < lasers.length; index++) {
 						if(detectCollision(nebuloids[row][column], lasers[index])) {
@@ -430,7 +515,7 @@ function shot() {
 							nebuloids[row][column].initializeShrapnel();
 							nebuloids[row][column].exploding = true;
 							lasers.splice(index, 1);
-							incrementScore(Game.nebuloidScore);
+							incrementScore(nebuloidScore);
 							index--;
 						}
 					}
@@ -449,7 +534,7 @@ function cybernatorShot() {
 					cybernator.initializeShrapnel();
 					cybernator.exploding = true;
 					lasers.splice(index, 1);
-					incrementScore(Game.cybernatorScore);
+					incrementScore(cybernatorScore);
 					index--;
 				}
 			}
@@ -457,26 +542,42 @@ function cybernatorShot() {
 	}
 }
 
+function detectShieldHit() {
+	if(nebuloidLasers.length > 0) {
+		for(index = 0; index < shields.length; index++) {
+			if(shields[index].health > 0) {
+				for(subIndex = 0; subIndex < nebuloidLasers.length; subIndex++) {
+					if(detectCollision(shields[index], nebuloidLasers[subIndex])) {
+						nebuloidLasers.splice(subIndex, 1);
+						subIndex--;
+						shields[index].health--;
+					}
+				}
+			}
+		}
+	}
+}
+
 function shiftNebuloidsDown() {
-	for(row = 0; row < Game.nebuloidRows; row++) {
-		for(column = 0; column < Game.nebuloidColumns; column++) {
-			nebuloids[row][column].y += Game.nebuloidHeight;
+	for(row = 0; row < nebuloidRows; row++) {
+		for(column = 0; column < nebuloidColumns; column++) {
+			nebuloids[row][column].y += nebuloidHeight;
 			nebuloids[row][column].direction *= -1;
 		}
 	}
 }
 
 function incrementScore(deltaScore) {
-	Game.score += deltaScore;
-	scoreLabel.innerHTML = "" + Game.score;
+	score += deltaScore;
+	scoreLabel.innerHTML = "" + score;
 }
 
 function detectPlayerHit() {
-	for(row = 0; row < Game.nebuloidRows; row++) {
-		for(column = 0; column < Game.nebuloidColumns; column++) {
+	for(row = 0; row < nebuloidRows; row++) {
+		for(column = 0; column < nebuloidColumns; column++) {
 			if(nebuloids[row][column].alive) {
 				if(detectCollision(ship, nebuloids[row][column])) {
-					Game.playingGame = false;
+					playingGame = false;
 				}
 			}
 		}
@@ -529,19 +630,19 @@ function getParallaxLayer(parallaxLayers = 1) {
 }
 
 function getParallaxWidth(z = 1) {
-	return Game.maximumStarWidth - z + 1;
+	return maximumStarWidth - z + 1;
 }
 
 function getParallaxHeight(z = 1) {
-	return Game.maximumStarHeight - z + 1;
+	return maximumStarHeight - z + 1;
 }
 
 function getParallaxSize(z = 1) {
-	return map(z, 1, Game.parallaxLayers, Game.maximumStarSize, Game.minimumStarSize);
+	return map(z, 1, parallaxLayers, maximumStarSize, minimumStarSize);
 }
 
 function getParallaxVelocity(z = 1) {
-	return map(z, 1, Game.parallaxLayers, Game.maximumStarVelocity, Game.minimumStarVelocity);
+	return map(z, 1, parallaxLayers, maximumStarVelocity, minimumStarVelocity);
 }
 
 function map(x, fromMin, fromMax, toMin, toMax) {

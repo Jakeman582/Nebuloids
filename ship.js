@@ -4,6 +4,8 @@ function Ship(x = 0, y = 0, velocity = 0, width = 0, height = 0,
 	/* Needed variables */
 	this.x 			= x;
 	this.y 			= y;
+	this.lastX = x;
+	this.lastY = y;
 	this.velocity 	= velocity;
 	this.width 		= width;
 	this.height 	= height;
@@ -36,7 +38,8 @@ function Ship(x = 0, y = 0, velocity = 0, width = 0, height = 0,
 	
 	// The ships needs to move itself
 	this.move = function(deltaTime) {
-		
+		this.lastX = this.x;
+		this.lastY = this.y;
 		this.x += this.velocity * deltaTime * this.direction;
 		
 	}

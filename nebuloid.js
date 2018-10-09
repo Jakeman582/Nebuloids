@@ -34,6 +34,8 @@ function Nebuloid(x = 0, y = 0, velocity = 0, width = 0, height = 0, color = "#0
 	
 	this.update = function(deltaTime) {
 		if(this.alive) {
+			this.lastX = this.x;
+			this.lastY = this.y;
 			this.x += this.direction * this.velocity * deltaTime;
 		} else if(this.exploding) {
 			this.explode(deltaTime);
@@ -61,6 +63,8 @@ function Nebuloid(x = 0, y = 0, velocity = 0, width = 0, height = 0, color = "#0
 		if(this.explodingTime < this.explodingDuration) {
 			this.explodingTime += deltaTime;
 			for(index = 0; index < this.splatterSize; index++) {
+				this.shrapnel[index].lastX = this.shrapnel[index].x;
+				this.shrapnel[index].lastY = this.shrapnel[index].y;
 				this.shrapnel[index].x += this.shrapnel[index].velocityX * deltaTime;
 				this.shrapnel[index].y += this.shrapnel[index].velocityY * deltaTime;
 			}

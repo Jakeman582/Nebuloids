@@ -2,6 +2,8 @@ function Particle(x = 0, y = 0, width = 0, height = 0, velocityX = 0, velocityY 
 	
 	this.x = x;
 	this.y = y;
+	this.lastX = x;
+	this.lastY = y;
 	this.width = width;
 	this.height = height;
 	this.velocityX = velocityX;
@@ -16,6 +18,8 @@ function Particle(x = 0, y = 0, width = 0, height = 0, velocityX = 0, velocityY 
 	}
 	
 	this.update = function(deltaTime) {
+		this.lastX = this.x;
+		this.lastY = this.y;
 		this.x += this.velocityX * deltaTime;
 		this.y += this.velocityY * deltaTime;
 	}
