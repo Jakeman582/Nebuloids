@@ -1,66 +1,69 @@
 /* Ship variables */
-shipWidth = 60;
-shipHeight = 60;
-shipYOffset = 10;
-shipColor = "#777777";
-shipVelocity = 8;
+var shipWidth = 60;
+var shipHeight = 60;
+var shipYOffset = 10;
+var shipColor = "#777777";
+var shipVelocity = 350;
 
 /* Nebuloid variables */
-nebuloidWidth = 30;
-nebuloidHeight = 30;
-nebuloidVelocity = 1;
-nebuloidRows = 5;
-nebuloidColumns = 10;
-nebuloidShotFrequency = 0.001;
-nebuloidLaserVelocity = 6;
+var nebuloidWidth = 30;
+var nebuloidHeight = 30;
+var nebuloidVelocity = 50;
+var nebuloidRows = 5;
+var nebuloidColumns = 10;
+var nebuloidsAlive = nebuloidRows * nebuloidColumns;
+var nebuloidShotFrequency = 0.0005;
+var nebuloidLaserVelocity = 200;
 
 /* Cybernator variables */
-cybernatorWidth = 90;
-cybernatorHeight = 30;
-cybernatorVelocity = 3;
-cybernatorColor = "#AAFFAA";
-cybernatorYOffset = 5;
+var cybernatorWidth = 90;
+var cybernatorHeight = 30;
+var cybernatorVelocity = 200;
+var cybernatorColor = "#AAFFAA";
+var cybernatorYOffset = 5;
 
 /* Shield variables */
-shieldNumber = 9;
-shieldWidth = 60;
-shieldHeight = 60;
-shieldHealth = 3;
-shieldColor = "#00FFFF";
-shieldGap = 40;
-shieldYOffset = 100;
+var shieldNumber = 9;
+var shieldWidth = 60;
+var shieldHeight = 60;
+var shieldHealth = 3;
+var shieldColor = "#00FFFF";
+var shieldGap = 40;
+var shieldYOffset = 100;
 
 /* Grid spacing variables */
-gridX = 30;
-gridY = 30;
-rowSpace = 10;
-columnSpace = 30;
+var gridX = 30;
+var gridY = 30;
+var rowSpace = 10;
+var columnSpace = 30;
 
 /* Laser variables */
-laserWidth = 4;
-laserHeight = 20;
-laserVelocity = 15;
-laserColor = "#FF0000";
+var laserWidth = 4;
+var laserHeight = 20;
+var laserVelocity = 500;
+var laserColor = "#FF0000";
 
 /* Gameplay variables */
-playingGame = true;
-nebuloidScore = 1;
-cybernatorScore = 5;
-score = 0;
-starCount = 75;
-minimumStarSize = 1;
-maximumStarSize = 5;
-minimumStarVelocity = 2;
-maximumStarVelocity = 10;
-parallaxLayers = 5;
+var playingGame = true;
+var nebuloidScore = 1;
+var cybernatorScore = 5;
+var score = 0;
+var starCount = 75;
+var minimumStarSize = 1;
+var maximumStarSize = 5;
+var minimumStarVelocity = 30;
+var maximumStarVelocity = 300;
+var parallaxLayers = 5;
+var playerLost = false;
+var playerWon = false;
 
 /* Performance variables */
-framesPerSecond = 60;
-framesThisSecond = 0;
-timeStep = 1000 / framesPerSecond;
-lastUpdate = 0;
-lastFrameTime = 0;
-deltaTime = 0;
+var framesPerSecond = 60;
+var framesThisSecond = 0;
+var timeStep = 1000 / framesPerSecond;
+var lastUpdate = 0;
+var lastFrameTime = 0;
+var deltaTime = 0;
 
 var Keyboard = {
    RIGHT:	39,
@@ -149,9 +152,27 @@ function main() {
 function resetGame() {
 	
 	playingGame = true;
-	score = 0;
 	
-	scoreLabel.innerHTML = "" + Game.score;
+	framesThisSecond = 0;
+	lastUpdate = 0;
+	lastFrameTime = 0;
+	deltaTime = 0;
+	
+	if(playerLost) {
+		score = 0;
+		nebuloidVelocity = 50;
+		nebuloidShotFrequency = 0.0005;
+		playerLost = false;
+	}
+	
+	if(playerWon) {
+		nebuloidVelocity += 2;
+		nebuloidShotFrequency += 0.001;
+		playerWon = false;
+	}
+	
+	
+	scoreLabel.innerHTML = "" + score;
 	
 	nextGameTick = date.getTime();
 	
@@ -163,10 +184,23 @@ function resetGame() {
 			nebuloids[row][column].alive = true;
 			nebuloids[row][column].x = gridX + (nebuloidWidth + columnSpace) * column;
 			nebuloids[row][column].y = gridY + (nebuloidHeight + rowSpace) * row;
-			nebuloids[row][column].color = randomColor();
+			nebuloids[row][column].lastX = nebuloids[row][column].x;
+			nebuloids[row][column].lastY = nebuloids[row][column].y
 			nebuloids[row][column].direction = Direction.RIGHT;
 		}
 	}
+	nebuloidsAlive = nebuloidRows * nebuloidColumns;
+	
+	for(index = 0; index < lasers.length; index++) {
+		lasers.splice(index, 1);
+	}
+	
+	for(index = 0; index < nebuloidLasers.length; index++) {
+		nebuloidLasers.splice(index, 1);
+	}
+	
+	cybernator.x = -cybernator.width;
+	cybernator.alive = false;
 	
 	for(index = 0; index < shields.length; index++) {
 		shields[index].health = shieldHealth;
@@ -286,32 +320,37 @@ function setup() {
 
 function playGame(timeStamp) {
 	
-	if(timeStamp < lastUpdate + (1000 / framesPerSecond)) {
-		requestAnimationFrame(playGame);
-		return;
-	}
-	deltaTime += timeStamp - lastUpdate;
-	lastUpdate = timeStamp;
+	if(playingGame && preloaded) {
 	
-	if(timeStamp > lastUpdate + 1000) {
-		framesPerSecond = 0.25 * framesThisSecond + (1 - 0.25) * framesPerSecond;
-		lastUpdate = timeStamp;
-		framesThisSecond = 0;
-	}
-	framesThisSecond++;
-	
-	var updateSteps = 0;
-	while(deltaTime >= timeStep) {
-		update(timeStep / 1000);
-		deltaTime -= timeStep;
-		if(++updateSteps >= 100) {
-			deltaTime = 0;
-			break;
+		if(timeStamp < lastUpdate + (1000 / framesPerSecond)) {
+			requestAnimationFrame(playGame);
+			return;
 		}
+		deltaTime += timeStamp - lastUpdate;
+		lastUpdate = timeStamp;
+		
+		if(timeStamp > lastUpdate + 1000) {
+			framesPerSecond = 0.25 * framesThisSecond + (1 - 0.25) * framesPerSecond;
+			lastUpdate = timeStamp;
+			framesThisSecond = 0;
+		}
+		framesThisSecond++;
+		
+		var updateSteps = 0;
+		while(deltaTime >= timeStep) {
+			update(timeStep / 1000);
+			deltaTime -= timeStep;
+			if(++updateSteps >= 100) {
+				deltaTime = 0;
+				break;
+			}
+		}
+		
+		render((deltaTime / timeStep) / 1000 );
+		
 	}
 	
-	render((deltaTime / timeStep) / 1000);
-   requestAnimationFrame(playGame);
+	requestAnimationFrame(playGame);
 }
 
 function makeLaser() {
@@ -407,13 +446,12 @@ function update(deltaTime) {
 	ship.setDirection(Pressed.LEFT, Pressed.RIGHT);
 	ship.move(deltaTime);
 	
-	shot();
+	nebuloidShot();
 	cybernatorShot();
-	detectShieldHit();
-	detectPlayerHit();
-	
+	shieldShot();
+	playerHit();
+	playerShot();
 	deleteLasers();
-	
 }
 
 function render(interpolation) {
@@ -421,32 +459,32 @@ function render(interpolation) {
 	screen.draw(graphics);
 	
 	for(index = 0; index < starCount; index++) {
-		stars[index].draw(graphics);
+		stars[index].draw(graphics, interpolation);
 	}
 	
-	cybernator.draw(graphics);
+	cybernator.draw(graphics, interpolation);
 	
 	for(index = 0; index < shields.length; index++) {
 		if(shields[index].health > 0) {
-			shields[index].draw(graphics);
+			shields[index].draw(graphics, interpolation);
 		}
 	}
 	
 	for(index = 0; index < nebuloidLasers.length; index++) {
-		nebuloidLasers[index].draw(graphics);
+		nebuloidLasers[index].draw(graphics, interpolation);
 	}
 	
 	for(row = 0; row < nebuloidRows; row++) {
 		for(column = 0; column < nebuloidColumns; column++) {
-			nebuloids[row][column].draw(graphics);
+			nebuloids[row][column].draw(graphics, interpolation);
 		}
 	}
 	
 	for(index = 0; index < lasers.length; index++) {
-		lasers[index].draw(graphics);
+		lasers[index].draw(graphics, interpolation);
 	}
 	
-	ship.draw(graphics);
+	ship.draw(graphics, interpolation);
 }
 
 function randomColor() {
@@ -504,7 +542,7 @@ function deleteLasers() {
 	}
 }
 
-function shot() {
+function nebuloidShot() {
 	if(lasers.length > 0) {
 		for(row = 0; row < nebuloidRows; row++) {
 			for(column = 0; column < nebuloidColumns; column++) {
@@ -517,6 +555,11 @@ function shot() {
 							lasers.splice(index, 1);
 							incrementScore(nebuloidScore);
 							index--;
+							nebuloidsAlive--;
+							if(nebuloidsAlive <= 0) {
+								playerWon = true;
+								playingGame = false;
+							}
 						}
 					}
 				}
@@ -542,7 +585,7 @@ function cybernatorShot() {
 	}
 }
 
-function detectShieldHit() {
+function shieldShot() {
 	if(nebuloidLasers.length > 0) {
 		for(index = 0; index < shields.length; index++) {
 			if(shields[index].health > 0) {
@@ -572,14 +615,24 @@ function incrementScore(deltaScore) {
 	scoreLabel.innerHTML = "" + score;
 }
 
-function detectPlayerHit() {
+function playerHit() {
 	for(row = 0; row < nebuloidRows; row++) {
 		for(column = 0; column < nebuloidColumns; column++) {
 			if(nebuloids[row][column].alive) {
 				if(detectCollision(ship, nebuloids[row][column])) {
+					playerLost = true;
 					playingGame = false;
 				}
 			}
+		}
+	}
+}
+
+function playerShot() {
+	for(index = 0; index < nebuloidLasers.length; index++) {
+		if(detectCollision(ship, nebuloidLasers[index])) {
+			playerLost = true;
+			playingGame = false;
 		}
 	}
 }
