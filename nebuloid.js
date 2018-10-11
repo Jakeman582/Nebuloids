@@ -9,25 +9,27 @@ function Nebuloid(x = 0, y = 0, velocity = 0, width = 0, height = 0, color = "#0
 	this.alive = alive;
 	this.exploding = false;
 	this.explodingTime = 0.0;
-	this.explodingDuration = 100;
-	this.splatterSize = 20;
+	this.explodingDuration = 1;
+	this.splatterSize = 25;
 	this.shrapnelSize = 5;
 	this.direction = direction;
 	
 	this.shrapnel = [];
 	
-	this.draw = function(graphics) {
+	this.draw = function(graphics, interpolation) {
+		var tempX = (this.lastX + (this.x - this.lastX) * interpolation);
+		var tempY = (this.lastY + (this.y - this.lastY) * interpolation);
 		if(this.alive) {
 			if(sprite) {
-				graphics.drawImage(sprite, this.x, this.y, this.width, this.height);
+				graphics.drawImage(sprite, tempX, tempY, this.width, this.height);
 			} else {
 				graphics.fillStyle = this.color;
-				graphics.fillRect(this.x, this.y, this.width, this.height);
+				graphics.fillRect(tempX, tempY, this.width, this.height);
 			}
 		} else if(this.exploding) {
 			var index;
 			for(index = 0; index < this.splatterSize; index++) {
-				this.shrapnel[index].draw(graphics);
+				this.shrapnel[index].draw(graphics, interpolation);
 			}
 		}
 	}
@@ -51,8 +53,8 @@ function Nebuloid(x = 0, y = 0, velocity = 0, width = 0, height = 0, color = "#0
 				this.y + this.height / 2, 
 				this.shrapnelSize, 
 				this.shrapnelSize, 
-				-3 + 6 * Math.random(),
-				-3 + 6 * Math.random(),
+				-50 + 100 * Math.random(),
+				-50 + 100 * Math.random(),
 				this.color
 			);
 		}
